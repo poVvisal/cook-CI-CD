@@ -11,6 +11,7 @@ env:
   PORT: 5001
   # IMAGE: ${{vars.IMAGE}}:${{github.sha}}
   IMAGE: gcr.io/${{ secrets.GCP_PROJECT_ID }}/ci-cd-tutorial-app:${{ github.sha }}
+  IMAGE_LATEST: gcr.io/${{ secrets.GCP_PROJECT_ID }}/ci-cd-tutorial-app:latest
 
 jobs:
   test:
@@ -51,10 +52,11 @@ jobs:
           echo "$D_PASS" | docker login --username "$D_USER" --password-stdin
       - name: Build and tag Image
         run: |
-          docker build -t ${{env.IMAGE}} .
+          docker build --pull -t ${{env.IMAGE}} -t ${{env.IMAGE_LATEST}} .
       - name: Push the image to Docker hub
         run: |
           docker push ${{env.IMAGE}}
+          docker push ${{env.IMAGE_LATEST}}
       - name: Enable the Billing API
         run: |
           gcloud services enable cloudbilling.googleapis.com --project=${{secrets.GCP_PROJECT_ID}}
