@@ -9,9 +9,22 @@ on:
 
 env:
   PORT: 5001
-
+  IMAGE: ${{vars.IMAGE}}:${{github.sha}}
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Setup, test, and build project
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test application
+        run: npm test
   build:
+    needs: test
     runs-on: ubuntu-latest
     name: Setup project, Authorize GitHub Actions to GCP and Docker Hub, and deploy
     steps:
@@ -20,20 +33,12 @@ jobs:
 
       - name: Authenticate for GCP
         id: gcp-auth
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v0
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - name: Compute image names
-        env:
-          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-        run: |
-          PROJECT_ID_TRIMMED=$(echo "$GCP_PROJECT_ID" | tr -d '\n' | tr -d '\r')
-          echo "IMAGE=gcr.io/${PROJECT_ID_TRIMMED}/ci-cd-tutorial-app:${GITHUB_SHA}" >> "$GITHUB_ENV"
-          echo "IMAGE_LATEST=gcr.io/${PROJECT_ID_TRIMMED}/ci-cd-tutorial-app:latest" >> "$GITHUB_ENV"
-
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@v0
 
       - name: Authenticate for Docker Hub
         id: docker-auth
@@ -41,19 +46,13 @@ jobs:
           D_USER: ${{secrets.DOCKER_USER}}
           D_PASS: ${{secrets.DOCKER_PASSWORD}}
         run: |
-          echo "$D_PASS" | docker login --username "$D_USER" --password-stdin
-      - name: Configure Docker auth for gcr.io
-        run: |
-          gcloud auth configure-docker gcr.io -q
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+          docker login -u $D_USER -p $D_PASS
       - name: Build and tag Image
         run: |
-          docker buildx build . --pull --load -t "$IMAGE" -t "$IMAGE_LATEST"
+          docker build -t ${{env.IMAGE}} .
       - name: Push the image to Docker hub
         run: |
-          docker push "$IMAGE"
-          docker push "$IMAGE_LATEST"
+          docker push ${{env.IMAGE}}
       - name: Enable the Billing API
         run: |
           gcloud services enable cloudbilling.googleapis.com --project=${{secrets.GCP_PROJECT_ID}}
@@ -62,7 +61,7 @@ jobs:
         run: |
           gcloud run deploy ${{vars.GCR_PROJECT_NAME}} \
           --region ${{vars.GCR_REGION}} \
-          --image "$IMAGE" \
+          --image ${{env.IMAGE}} \
           --platform "managed" \
           --allow-unauthenticated \
           --tag production \
@@ -73,7 +72,7 @@ jobs:
           # Deploy service with to staging environment
           gcloud run deploy ${{vars.GCR_STAGING_PROJECT_NAME}} \
           --region ${{vars.GCR_REGION}} \
-          --image "$IMAGE" \
+          --image ${{env.IMAGE}} \
           --platform "managed" \
           --allow-unauthenticated \
           --tag staging \
