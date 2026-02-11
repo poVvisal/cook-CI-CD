@@ -74,4 +74,4 @@ gcloud run deploy gcr-ci-cd-app \
 - 🛠️ Potential next steps: add API endpoints, integrate datastore, expand automated tests, wire up monitoring dashboards
 
 ## License
-Licensed under the ISC License. See `package.json` for details.
+Licensed under the ISC License. See `package.json` for details.3
