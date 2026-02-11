@@ -51,7 +51,7 @@ jobs:
           echo "$D_PASS" | docker login --username "$D_USER" --password-stdin
       - name: Build and tag Image
         run: |
-          docker build -t ${{env.IMAGE}} .
+          docker buildx -t ${{env.IMAGE}} .
       - name: Push the image to Docker hub
         run: |
           docker push ${{env.IMAGE}}
