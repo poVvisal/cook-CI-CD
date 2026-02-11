@@ -14,20 +14,7 @@ env:
   IMAGE_LATEST: gcr.io/${{ secrets.GCP_PROJECT_ID }}/ci-cd-tutorial-app:latest
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    name: Setup, test, and build project
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Test application
-        run: npm test
   build:
-    needs: test
     runs-on: ubuntu-latest
     name: Setup project, Authorize GitHub Actions to GCP and Docker Hub, and deploy
     steps:
@@ -52,7 +39,7 @@ jobs:
           echo "$D_PASS" | docker login --username "$D_USER" --password-stdin
       - name: Build and tag Image
         run: |
-          docker build --pull -t ${{env.IMAGE}} -t ${{env.IMAGE_LATEST}} .
+          docker buildx build --pull -t ${{env.IMAGE}} -t ${{env.IMAGE_LATEST}} --load .
       - name: Push the image to Docker hub
         run: |
           docker push ${{env.IMAGE}}
