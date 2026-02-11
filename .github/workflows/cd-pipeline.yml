@@ -9,7 +9,9 @@ on:
 
 env:
   PORT: 5001
-  IMAGE: ${{vars.IMAGE}}:${{github.sha}}
+  # IMAGE: ${{vars.IMAGE}}:${{github.sha}}
+  IMAGE: gcr.io/${{ secrets.GCP_PROJECT_ID }}/ci-cd-tutorial-app:${{ github.sha }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
