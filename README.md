@@ -7,7 +7,7 @@ This repository contains a minimal Node/Express web server that powers a CI/CD t
 - **Testing:** Jest + Supertest request specs
 - **Containerization:** Docker image built via GitHub Actions
 - **Deployment target:** Google Cloud Run (managed) with staging + production revisions
-- **Automation:** `.github/workflows/cd-pipeline.yml` runs tests, builds, pushes, and deploys
+- **Automation:** CI workflow (`.github/workflows/ci-pipeline.yml`) runs tests on PRs, CD workflow (`.github/workflows/cd-pipeline.yml`) builds, pushes, and deploys
 
 ## Prerequisites
 - Node.js 18+ and npm
@@ -45,13 +45,24 @@ The suite validates that `/` returns `200` and the response body mentions “web
 You can create a `.env` file (ignored by Git) to override defaults locally. The CI pipeline injects the same variables via workflow `env` blocks.
 
 ## CI/CD Pipeline
-The workflow in `.github/workflows/cd-pipeline.yml` orchestrates two jobs:
-1. **test** – installs dependencies with `npm ci` and runs the Jest suite on Ubuntu runners.
-2. **build** – authenticates to Google Cloud + Docker Hub, builds the image (`docker build -t $IMAGE .`), pushes it, and deploys to Cloud Run.
+There are two workflows under `.github/workflows`:
+
+1. **CI workflow** – `.github/workflows/ci-pipeline.yml`
+	- Triggered on `pull_request` targeting the `staging` or `main` branches.
+	- Checks out the code, runs `npm install`, executes `npm test`, and optionally runs `npm run build --if-present`.
+	- Purpose: validate changes before merging (no deploy).
+
+2. **CD workflow** – `.github/workflows/cd-pipeline.yml`
+	- Triggered on:
+	  - `push` to the `staging` branch (auto-deploy to staging).
+	  - `release` events with `action: published` where the target commit is on `main` (deploy to production).
+	  - Manual `workflow_dispatch` from the GitHub UI.
+	- Steps: checkout, authenticate to Google Cloud and Docker Hub, build the Docker image with `docker buildx build --pull -t $IMAGE -t $IMAGE_LATEST --load .`, push it to the registry, then deploy to Cloud Run.
+	- Tests are not re-run here; the pipeline assumes CI already passed on the PR.
 
 Deployment behavior:
-- Every push to `staging` (or non-`main` refs) triggers the staging deploy step (`--tag staging`).
-- Publishing a GitHub Release whose target commit is on `main` triggers the production deploy step (`--tag production`).
+- Pushes to `staging` deploy to Cloud Run with `--tag staging`.
+- Publishing a GitHub Release whose target commit is on `main` deploys with `--tag production`.
 - Cloud Billing API enablement is automated before deploying to avoid first-time project issues.
 
 Ensure the following GitHub secrets/variables exist:
@@ -74,4 +85,4 @@ gcloud run deploy gcr-ci-cd-app \
 - 🛠️ Potential next steps: add API endpoints, integrate datastore, expand automated tests, wire up monitoring dashboards
 
 ## License
-Licensed under the ISC License. See `package.json` for details.3
+Licensed under the ISC License. See `package.json` for details.
