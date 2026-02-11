@@ -33,12 +33,12 @@ jobs:
 
       - name: Authenticate for GCP
         id: gcp-auth
-        uses: google-github-actions/auth@v0
+        uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: Authenticate for Docker Hub
         id: docker-auth
@@ -46,7 +46,7 @@ jobs:
           D_USER: ${{secrets.DOCKER_USER}}
           D_PASS: ${{secrets.DOCKER_PASSWORD}}
         run: |
-          docker login -u $D_USER -p $D_PASS
+          echo "$D_PASS" | docker login --username "$D_USER" --password-stdin
       - name: Build and tag Image
         run: |
           docker build -t ${{env.IMAGE}} .
